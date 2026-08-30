@@ -13,13 +13,13 @@
 - 浅色和深色 `ThemeConfig`，可直接用于 `Theme::apply_config`
 - `GlassTokens::from_theme`：从当前语义主题派生玻璃表面颜色，避免在组件里散落色值
 - `glass_surface` / `glass_interactive`：半透明填充、hairline 边框、顶部 specular 高光和双层阴影，并插入同场景 backdrop primitive
-- `glass_surface_with_backdrop` / `GlassBackdrop`：可调 blur 半径、折射位移、折射率、微表面频率和 Fresnel 反射
+- `glass_surface_with_backdrop` / `GlassBackdrop`：完整 Prismal 风格材质参数，包括圆弧高度场、液态 dome、球形 meniscus 法线、双界面 Snell 折射、RGB 色散、双 Blinn-Phong 高光、双侧 Fresnel rim、caustic、vibrancy、transmittance、parallax/pinch 和 press glow
 - `soft_glass_window_background()`：可选的整窗系统 backdrop blur；组件玻璃不会依赖它
 - `glass_entrance`：360ms ease-out 入场动画，只在动画期间请求帧
 - `ease_in_out_cubic`、`ease_out_back`、`ease_out_quint` 和 `interpolate_hsla` 可用于应用层状态动画
 - `examples/preview.rs` 提供可运行的主题预览
 
-组件级玻璃不通过独立原生窗口，也不模糊 Windows 后方窗口。仓库在 `vendor/gpui` 提供了最小 renderer 扩展：每个 primitive 按 draw order 将此前已绘制的 GPUI scene 复制到 offscreen texture，pixel shader 使用多 tap Gaussian blur，在折射率驱动的 Snell 传输向量上做 UV displacement，再以 Schlick Fresnel 混合反射采样和 tint。这样采样源就是同一窗口、同一 scene 中玻璃下方的 UI。Blade、Metal 等暂未提供可移植的 scene-copy API，会保留相同 primitive 和半透明 tint fallback。
+组件级玻璃不通过独立原生窗口，也不模糊 Windows 后方窗口。仓库在 `vendor/gpui` 提供了 scene-level renderer 扩展：每个 primitive 按 draw order 将此前已绘制的 GPUI scene 复制到 offscreen texture，pixel shader 依次计算 SDF/高度场/meniscus 法线、双界面 Snell 传输、Gaussian blur、RGB 色散、Blinn-Phong 高光、Fresnel 双侧 rim 和 caustic，再与 tint/transmittance 合成。这样采样源就是同一窗口、同一 scene 中玻璃下方的 UI。Blade、Metal 等暂未提供可移植的 scene-copy API，会保留相同 primitive 和半透明 tint fallback。
 
 ## 使用
 
@@ -47,13 +47,9 @@ fn panel(window: &Window, cx: &App) -> impl gpui::IntoElement {
 
 fn custom_panel(cx: &App) -> impl gpui::IntoElement {
     let glass = GlassTokens::from_theme(cx.theme());
-    let material = GlassBackdrop {
-        blur_radius: gpui::px(24.),
-        distortion_strength: 4.0,
-        reflection_strength: 0.5,
-        refraction_index: 1.46,
-        noise_scale: 0.018,
-    };
+    let material = GlassBackdrop::from(glass)
+        .with_chromatic_aberration(2.0)
+        .with_light_direction([-0.5, -0.8]);
     glass_surface_with_backdrop(div().child("可调折射玻璃"), glass, material)
 }
 

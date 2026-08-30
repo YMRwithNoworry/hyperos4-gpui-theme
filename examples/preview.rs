@@ -70,6 +70,33 @@ fn ambient_pattern() -> impl IntoElement {
                 }),
         );
     }
+    // High-frequency content makes the same-scene blur and Snell displacement
+    // obvious through the glass cards (the shader never samples another
+    // native window).
+    for i in 0..26 {
+        let x = 18. + i as f32 * 44.;
+        pattern = pattern.child(
+            div()
+                .absolute()
+                .left(px(x))
+                .top(px(76.))
+                .w(px(1.))
+                .h(px(610.))
+                .bg(rgba(if i % 2 == 0 { 0xffffff22 } else { 0x244a9c28 })),
+        );
+    }
+    for i in 0..14 {
+        let y = 104. + i as f32 * 42.;
+        pattern = pattern.child(
+            div()
+                .absolute()
+                .left(px(12.))
+                .top(px(y))
+                .w(px(1090.))
+                .h(px(1.))
+                .bg(rgba(if i % 2 == 0 { 0xffffff2a } else { 0x244a9c24 })),
+        );
+    }
     pattern
 }
 
@@ -129,9 +156,8 @@ fn metric(
 }
 
 /// A compact player tile used to make the material response visible in the
-/// preview. It stays in the same GPUI scene as the workspace. GPUI 0.2.2 does
-/// not expose the scene texture to an element, so the portable material layer
-/// uses directional reflection bands and edge highlights as its fallback.
+/// preview. It stays in the same GPUI scene as the workspace, so cards above
+/// it can refract and blur these gradients through the DirectX backdrop pass.
 fn media_player() -> impl IntoElement {
     let body = linear_gradient(
         135.,

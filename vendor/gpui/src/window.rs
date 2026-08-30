@@ -2879,6 +2879,33 @@ impl Window {
             reflection_strength: backdrop.reflection_strength,
             refraction_index: backdrop.refraction_index,
             noise_scale: backdrop.noise_scale,
+            thickness: backdrop.thickness.0 * scale_factor,
+            normal_strength: backdrop.normal_strength,
+            displacement_scale: backdrop.displacement_scale,
+            height_transition_width: backdrop.height_transition_width.0 * scale_factor,
+            height_blur_factor: backdrop.height_blur_factor,
+            chromatic_aberration: backdrop.chromatic_aberration,
+            dispersion_r: backdrop.dispersion_r,
+            dispersion_b: backdrop.dispersion_b,
+            brightness: backdrop.brightness,
+            vibrancy: backdrop.vibrancy,
+            specular_strength: backdrop.specular_strength,
+            shininess: backdrop.shininess,
+            rim_strength: backdrop.rim_strength,
+            highlight_width: backdrop.highlight_width.0 * scale_factor,
+            caustic_intensity: backdrop.caustic_intensity,
+            liquid_dome: backdrop.liquid_dome,
+            fresnel_strength: backdrop.fresnel_strength,
+            transmittance: backdrop.transmittance,
+            shadow_softness: backdrop.shadow_softness,
+            parallax_scale: backdrop.parallax_scale,
+            backdrop_pinch: backdrop.backdrop_pinch,
+            lens_refraction_px: backdrop.lens_refraction_px,
+            lens_depth_effect: backdrop.lens_depth_effect,
+            press_progress: backdrop.press_progress,
+            glow_center: backdrop.glow_center,
+            glow_strength: backdrop.glow_strength,
+            light_direction: backdrop.light_direction,
             tint: backdrop.tint.opacity(opacity),
         });
     }
@@ -5067,6 +5094,60 @@ pub struct PaintBackdropBlur {
     pub refraction_index: f32,
     /// Procedural normal frequency used for the micro-surface.
     pub noise_scale: f32,
+    /// Physical thickness used by the two-interface Snell refraction model.
+    pub thickness: Pixels,
+    /// Height-field normal strength for the liquid dome.
+    pub normal_strength: f32,
+    /// Multiplier applied to all lens displacement terms.
+    pub displacement_scale: f32,
+    /// SDF-to-height transition width in logical pixels.
+    pub height_transition_width: Pixels,
+    /// Multiplier for the depth-dependent blur radius.
+    pub height_blur_factor: f32,
+    /// RGB channel separation near the silhouette.
+    pub chromatic_aberration: f32,
+    /// Red channel dispersion multiplier.
+    pub dispersion_r: f32,
+    /// Blue channel dispersion multiplier.
+    pub dispersion_b: f32,
+    /// Transmission brightness multiplier.
+    pub brightness: f32,
+    /// Saturation/vibrancy boost for the scene sample.
+    pub vibrancy: f32,
+    /// Primary/secondary Blinn-Phong intensity.
+    pub specular_strength: f32,
+    /// Blinn-Phong gloss exponent.
+    pub shininess: f32,
+    /// Edge rim highlight intensity.
+    pub rim_strength: f32,
+    /// Width of the plain hairline highlight in logical pixels.
+    pub highlight_width: Pixels,
+    /// Focused-light caustic intensity.
+    pub caustic_intensity: f32,
+    /// 0 for slab, 1 for a liquid-style spherical dome.
+    pub liquid_dome: f32,
+    /// Fresnel reflection multiplier.
+    pub fresnel_strength: f32,
+    /// Final transmission alpha multiplier.
+    pub transmittance: f32,
+    /// Inner shadow softness.
+    pub shadow_softness: f32,
+    /// Screen-space parallax multiplier.
+    pub parallax_scale: f32,
+    /// Backdrop pinch amount during a press.
+    pub backdrop_pinch: f32,
+    /// Additional curved-lens displacement in logical pixels.
+    pub lens_refraction_px: f32,
+    /// Radial lens-depth contribution.
+    pub lens_depth_effect: f32,
+    /// Interactive press progress, normally animated from 0 to 1.
+    pub press_progress: f32,
+    /// Press glow centre in normalized surface coordinates.
+    pub glow_center: [f32; 2],
+    /// Interactive press glow strength.
+    pub glow_strength: f32,
+    /// Normalized 2D key-light direction.
+    pub light_direction: [f32; 2],
     /// Translucent material tint.
     pub tint: Hsla,
 }
@@ -5081,6 +5162,33 @@ impl Default for PaintBackdropBlur {
             reflection_strength: 0.42,
             refraction_index: 1.46,
             noise_scale: 0.018,
+            thickness: px(18.),
+            normal_strength: 1.15,
+            displacement_scale: 1.15,
+            height_transition_width: px(18.),
+            height_blur_factor: 1.0,
+            chromatic_aberration: 0.0,
+            dispersion_r: 1.0,
+            dispersion_b: 1.0,
+            brightness: 1.08,
+            vibrancy: 1.18,
+            specular_strength: 1.52,
+            shininess: 88.0,
+            rim_strength: 1.22,
+            highlight_width: px(4.),
+            caustic_intensity: 0.28,
+            liquid_dome: 0.72,
+            fresnel_strength: 1.3,
+            transmittance: 0.96,
+            shadow_softness: 0.7,
+            parallax_scale: 1.0,
+            backdrop_pinch: 0.96,
+            lens_refraction_px: 8.0,
+            lens_depth_effect: 0.08,
+            press_progress: 0.0,
+            glow_center: [0.5, 0.5],
+            glow_strength: 0.0,
+            light_direction: [-0.5, -0.8],
             tint: transparent_black(),
         }
     }

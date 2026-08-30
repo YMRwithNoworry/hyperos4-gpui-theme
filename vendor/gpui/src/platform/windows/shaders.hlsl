@@ -428,6 +428,33 @@ struct BackdropBlur {
     float reflection_strength;
     float refraction_index;
     float noise_scale;
+    float thickness;
+    float normal_strength;
+    float displacement_scale;
+    float height_transition_width;
+    float height_blur_factor;
+    float chromatic_aberration;
+    float dispersion_r;
+    float dispersion_b;
+    float brightness;
+    float vibrancy;
+    float specular_strength;
+    float shininess;
+    float rim_strength;
+    float highlight_width;
+    float caustic_intensity;
+    float liquid_dome;
+    float fresnel_strength;
+    float transmittance;
+    float shadow_softness;
+    float parallax_scale;
+    float backdrop_pinch;
+    float lens_refraction_px;
+    float lens_depth_effect;
+    float press_progress;
+    float2 glow_center;
+    float glow_strength;
+    float2 light_direction;
     Hsla tint;
 };
 
@@ -472,45 +499,183 @@ float4 sample_backdrop_blur(float2 uv, float2 texel, float radius) {
     return color;
 }
 
+float sd_backdrop_round_rect(float2 p, float2 half_size, float radius) {
+    float2 q = abs(p) - half_size + radius;
+    return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - radius;
+}
+
+float2 grad_backdrop_round_rect(float2 p, float2 half_size, float radius) {
+    float2 q = abs(p) - half_size + radius;
+    if (q.x > 0.0f || q.y > 0.0f) {
+        float2 outside = max(q, 0.0f);
+        float l = max(length(outside), 0.0001f);
+        return sign(p) * outside / l;
+    }
+    return sign(p) * (q.x > q.y ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f));
+}
+
+float backdrop_height(float dist, float transition_width) {
+    float t = saturate(-dist / max(transition_width, 1.0f));
+    return sqrt(max(0.0f, 2.0f * t - t * t));
+}
+
+float2 backdrop_height_gradient(float2 p, float2 half_size, float radius, float transition_width) {
+    float hx = backdrop_height(sd_backdrop_round_rect(p + float2(1.0f, 0.0f), half_size, radius), transition_width);
+    float nx = backdrop_height(sd_backdrop_round_rect(p - float2(1.0f, 0.0f), half_size, radius), transition_width);
+    float hy = backdrop_height(sd_backdrop_round_rect(p + float2(0.0f, 1.0f), half_size, radius), transition_width);
+    float ny = backdrop_height(sd_backdrop_round_rect(p - float2(0.0f, 1.0f), half_size, radius), transition_width);
+    return float2((hx - nx) * 0.5f, (hy - ny) * 0.5f);
+}
+
+float2 backdrop_uv(float2 screen_uv, float2 offset, float pinch_mix, BackdropBlur backdrop) {
+    float press = saturate(backdrop.press_progress);
+    float pinch = lerp(1.0f, max(backdrop.backdrop_pinch, 0.01f), press * pinch_mix);
+    float2 scaled = (screen_uv - 0.5f) / pinch + 0.5f;
+    return saturate(scaled + offset);
+}
+
+float3 apply_backdrop_vibrancy(float3 rgb, float vibrancy) {
+    float luminance = dot(rgb, float3(0.213f, 0.715f, 0.072f));
+    return saturate(lerp(float3(luminance, luminance, luminance), rgb, max(vibrancy, 0.0f)));
+}
+
+float circle_map_backdrop(float x) {
+    x = saturate(x);
+    return 1.0f - sqrt(max(0.0f, 1.0f - x * x));
+}
+
 float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     BackdropBlur backdrop = backdrop_blurs[input.backdrop_id];
     float2 pixel = input.position.xy;
     float2 uv = pixel / global_viewport_size;
     float2 texel = 1.0 / global_viewport_size;
 
-    // Build a deterministic micro-normal from two orthogonal waves. The
-    // normal is fed through Snell's law rather than simply offsetting UVs.
-    float2 local = pixel - backdrop.bounds.origin;
-    float2 wave = float2(
-        sin((local.x + local.y) * backdrop.noise_scale),
-        cos((local.x - local.y) * backdrop.noise_scale)
-    );
-    float2 slope = normalize(wave + float2(0.0001f, 0.0001f));
-    float3 normal = normalize(float3(slope * 0.16f, 1.0f));
-    float3 incident = float3(0.0f, 0.0f, -1.0f);
-    float eta = 1.0f / max(backdrop.refraction_index, 1.001f);
-    float3 transmitted = refract(incident, normal, eta);
-    float2 refracted_uv = saturate(uv + transmitted.xy * backdrop.distortion_strength * texel);
-
-    float4 refracted = sample_backdrop_blur(refracted_uv, texel, backdrop.blur_radius);
-    float2 reflected_uv = saturate(uv - transmitted.xy * backdrop.distortion_strength * 0.55f * texel);
-    float4 reflected_scene = sample_backdrop_blur(reflected_uv, texel, backdrop.blur_radius * 0.55f);
-
-    float cos_theta = saturate(dot(-incident, normal));
-    float f0 = pow((1.0f - backdrop.refraction_index) / (1.0f + backdrop.refraction_index), 2.0f);
-    float fresnel = f0 + (1.0f - f0) * pow(1.0f - cos_theta, 5.0f);
-    float4 tint = hsla_to_rgba(backdrop.tint);
-    float3 color = lerp(refracted.rgb, tint.rgb, tint.a);
-    color = lerp(color, reflected_scene.rgb, saturate(fresnel * backdrop.reflection_strength));
-    float alpha = saturate(max(tint.a, 0.16f) + fresnel * backdrop.reflection_strength * 0.35f);
-
     float2 half_size = backdrop.bounds.size * 0.5f;
-    float2 center_to_point = pixel - (backdrop.bounds.origin + half_size);
-    float corner_radius = pick_corner_radius(center_to_point, backdrop.corner_radii);
-    float2 corner_to_point = abs(center_to_point) - half_size;
-    float sdf = quad_sdf_impl(corner_to_point + corner_radius, corner_radius);
-    float coverage = 1.0f - smoothstep(-1.0f, 1.0f, sdf);
-    return float4(color, alpha * coverage);
+    float2 p = pixel - (backdrop.bounds.origin + half_size);
+    float min_dim = min(half_size.x, half_size.y);
+    float radius = min(pick_corner_radius(p, backdrop.corner_radii), min_dim);
+    float dist = sd_backdrop_round_rect(p, half_size, radius);
+    float edge_dist = -dist;
+    float coverage = 1.0f - smoothstep(-1.0f, 1.0f, dist);
+    float inset = min(max(min_dim * 0.055f, 1.5f), 20.0f);
+    float opacity = 1.0f - smoothstep(-inset * 0.5f, 0.0f, dist);
+    opacity = lerp(opacity, 1.0f, smoothstep(0.0f, 0.55f, edge_dist));
+    if (opacity < 0.001f || coverage <= 0.0f) discard;
+
+    // Prismal's circular-arc height field and liquid dome.
+    float dome = clamp(backdrop.liquid_dome, 0.0f, 2.0f);
+    float transition = max(backdrop.height_transition_width * (1.0f + 0.38f * dome), 1.0f);
+    transition = min(transition, min_dim * 0.98f);
+    float h_slab = backdrop_height(dist, transition);
+    float inner_reach = max(min_dim - radius * 0.42f, min_dim * 0.22f);
+    inner_reach = min(inner_reach + transition * (1.0f + 0.25f * dome), max(half_size.x, half_size.y) * 0.95f);
+    float t_deep = saturate(edge_dist / max(inner_reach, 2.0f));
+    float t_shell = 1.0f - t_deep;
+    float meniscus_band = smoothstep(0.0f, 0.12f, t_shell);
+    float h_dome = (pow(t_shell, 0.88f) + 0.24f * pow(t_shell, 2.45f)) * meniscus_band;
+    float height = saturate(lerp(h_slab, h_dome, dome * (0.74f + 0.26f * smoothstep(0.12f, 0.94f, t_shell))));
+
+    float2 g_rect = grad_backdrop_round_rect(p, half_size, radius);
+    float2 outward = length(g_rect) > 0.001f ? normalize(g_rect) : float2(0.0f, 1.0f);
+    float2 grad_h = backdrop_height_gradient(p, half_size, radius, transition);
+    float2 grad_cap = outward * (-smoothstep(0.0f, 1.0f, t_shell) * (0.38f / max(min_dim, 8.0f)));
+    grad_h = lerp(grad_h, grad_cap, dome * (0.74f + 0.26f * smoothstep(0.12f, 0.94f, t_shell)));
+    float3 normal = normalize(float3(-grad_h * backdrop.normal_strength, 1.0f));
+
+    float men_w = saturate(edge_dist / transition);
+    float men_circ = sqrt(max(0.0f, 1.0f - men_w * men_w));
+    float3 meniscus_normal = normalize(float3(-outward * men_circ * 0.95f, 0.26f + 0.74f * men_w));
+    float men_blend = smoothstep(transition * 0.42f, 0.0f, edge_dist) * smoothstep(-4.0f, 0.0f, dist) * 0.82f;
+    normal = normalize(lerp(normal, meniscus_normal, men_blend));
+
+    // Two-interface Snell refraction through a finite-thickness slab.
+    float3 view = float3(0.0f, 0.0f, 1.0f);
+    float cos_view = saturate(dot(normal, view));
+    float ior = max(backdrop.refraction_index, 1.001f);
+    float f0 = pow((1.0f - ior) / (1.0f + ior), 2.0f);
+    float fresnel = f0 + (1.0f - f0) * pow(1.0f - cos_view, 5.0f);
+    float refr_strength = height * (0.5f + fresnel * 0.35f);
+    float3 ref_in = refract(-view, normal, 1.0f / ior);
+    float3 ref_out = dot(ref_in, ref_in) < 0.001f ? float3(0.0f, 0.0f, 0.0f) : refract(ref_in, -normal, ior);
+    float2 snell_offset = ref_out.xy * backdrop.thickness * refr_strength / global_viewport_size;
+    snell_offset *= backdrop.displacement_scale;
+    float2 lens_dir = g_rect + backdrop.lens_depth_effect * normalize(p + float2(0.0001f, 0.0001f));
+    lens_dir = length(lens_dir) > 0.001f ? normalize(lens_dir) : float2(0.0f, 1.0f);
+    float lens_ramp = circle_map_backdrop(1.0f - saturate(-dist / max(transition, 1.0f)));
+    float2 lens_offset = lens_dir * (-backdrop.lens_refraction_px * lens_ramp) / global_viewport_size;
+    float2 parallax = g_rect * height * (7.0f + 22.0f * fresnel) / global_viewport_size * (0.052f * backdrop.displacement_scale * backdrop.parallax_scale);
+    float2 base_offset = (snell_offset + lens_offset + parallax) * backdrop.distortion_strength;
+    float pinch_mix = 1.0f - smoothstep(0.0f, 0.72f, t_deep);
+    float2 uv_center = backdrop_uv(uv, base_offset, pinch_mix, backdrop);
+
+    // Blur is intentionally sampled from the copied scene texture: no other
+    // windows are involved, only pixels painted earlier in this GPUI scene.
+    float blur_radius = max(backdrop.blur_radius * (0.55f + 0.45f * backdrop.height_blur_factor * height), 0.0f);
+    float3 color;
+    float chroma = max(backdrop.chromatic_aberration, 0.0f);
+    if (chroma < 0.02f) {
+        color = sample_backdrop_blur(uv_center, texel, blur_radius).rgb;
+    } else {
+        float edge_factor = pow(smoothstep(min_dim, 0.0f, edge_dist), 1.8f);
+        float2 chroma_push = (length(p) > 0.001f ? normalize(p) : float2(0.0f, 1.0f)) * chroma * 0.0018f * edge_factor;
+        float r = sample_backdrop_blur(backdrop_uv(uv, base_offset + chroma_push * backdrop.dispersion_r, pinch_mix, backdrop), texel, blur_radius).r;
+        float g = sample_backdrop_blur(uv_center, texel, blur_radius).g;
+        float b = sample_backdrop_blur(backdrop_uv(uv, base_offset - chroma_push * backdrop.dispersion_b, pinch_mix, backdrop), texel, blur_radius).b;
+        color = float3(r, g, b);
+    }
+    color = apply_backdrop_vibrancy(color, backdrop.vibrancy);
+
+    float edge_shell = smoothstep(min_dim * 0.12f, 0.0f, edge_dist) * smoothstep(-4.5f, 0.0f, dist);
+    float fresnel_mix = saturate(fresnel * backdrop.fresnel_strength * backdrop.reflection_strength);
+    float2 reflection_uv = saturate(uv_center + normalize(g_rect + float2(0.0001f, 0.0001f))
+        * (4.0f + 38.0f * pow(1.0f - cos_view, 1.25f) + length(normal.xy) * 14.0f) / global_viewport_size);
+    float3 reflected = sample_backdrop_blur(reflection_uv, texel, blur_radius * 0.55f).rgb;
+    color = lerp(color, reflected, saturate(edge_shell * fresnel_mix * (0.28f + 0.72f * height)));
+    color = lerp(color, float3(0.88f, 0.93f, 1.02f), saturate(edge_shell * fresnel_mix * 0.18f));
+
+    float4 tint = hsla_to_rgba(backdrop.tint);
+    color = lerp(color, tint.rgb, tint.a);
+    color *= max(backdrop.brightness, 0.0f);
+
+    // Dual Blinn-Phong highlights and a warm focused-light caustic.
+    float2 light_xy = normalize(backdrop.light_direction + float2(0.0001f, 0.0001f));
+    float3 primary_light = normalize(float3(light_xy, 1.45f));
+    float3 secondary_light = normalize(float3(-light_xy.x * 0.62f + 0.41f, -light_xy.y * 0.62f + 0.33f, 0.74f));
+    float3 half_primary = normalize(primary_light + view);
+    float3 half_secondary = normalize(secondary_light + view);
+    float spec_primary = pow(max(dot(normal, half_primary), 0.0f), max(backdrop.shininess, 1.0f)) * backdrop.specular_strength * 1.05f;
+    float spec_secondary = pow(max(dot(normal, half_secondary), 0.0f), max(backdrop.shininess, 1.0f) * 0.68f) * backdrop.specular_strength * 0.48f;
+    color += (spec_primary * (0.32f + 0.68f * height) + spec_secondary * (0.24f + 0.76f * height)) * float3(0.99f, 0.993f, 1.0f);
+
+    float shadow_ext = lerp(0.15f, 0.60f, backdrop.shadow_softness > 1.0f
+        ? saturate(backdrop.shadow_softness / 20.0f) : saturate(backdrop.shadow_softness));
+    float inner_shadow = pow(1.0f - smoothstep(0.0f, max(min_dim * shadow_ext, 1.0f), edge_dist), 2.35f) * 0.62f * (0.22f + height * 0.68f);
+    color = lerp(color, tint.rgb * 0.25f, inner_shadow * tint.a);
+
+    float edge_light = dot(normalize(g_rect + float2(0.0001f, 0.0001f)), light_xy);
+    float rim_band = max(backdrop.highlight_width, 1.0f);
+    float shell_rim = smoothstep(rim_band, rim_band * 0.06f, edge_dist) * smoothstep(-2.2f, 0.0f, dist);
+    float lit_rim = pow(max(edge_light, 0.0f), 3.6f) * shell_rim * backdrop.rim_strength;
+    float opposite_rim = pow(max(-edge_light, 0.0f), 1.05f) * shell_rim * (0.28f + 0.72f * fresnel) * backdrop.rim_strength;
+    color += float3(0.98f, 0.992f, 1.008f) * (lit_rim * (0.58f + 0.42f * height) + opposite_rim * (0.4f + 0.6f * height));
+    float face_sheen = smoothstep(rim_band * 1.8f, rim_band * 0.08f, edge_dist) * smoothstep(-2.0f, 0.0f, dist)
+        * smoothstep(0.08f, 0.82f, edge_light) * pow(1.0f - cos_view, 2.9f) * fresnel * backdrop.rim_strength * 0.022f;
+    color += float3(0.98f, 0.992f, 1.008f) * face_sheen * (0.48f + 0.52f * height);
+
+    if (backdrop.caustic_intensity > 0.001f) {
+        float caustic_dot = dot(normalize(float3(grad_h * backdrop.normal_strength, 0.45f)), primary_light);
+        color += pow(max(caustic_dot, 0.0f), 7.0f) * backdrop.caustic_intensity * height * float3(1.0f, 0.96f, 0.90f);
+    }
+
+    float press_glow = saturate(backdrop.press_progress) * saturate(backdrop.glow_strength);
+    if (press_glow > 0.001f) {
+        float2 glow_px = backdrop.glow_center * backdrop.bounds.size - half_size;
+        float spot = smoothstep(min_dim * 1.5f, min_dim * 0.5f, length(p - glow_px));
+        color += float3(1.0f, 1.0f, 1.0f) * press_glow * (0.08f + spot * 0.15f);
+    }
+
+    float alpha = saturate(max(tint.a, 0.16f) + fresnel_mix * 0.35f) * backdrop.transmittance;
+    return float4(color, alpha * opacity * coverage);
 }
 
 float corner_dash_velocity(float dv1, float dv2) {
