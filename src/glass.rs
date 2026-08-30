@@ -13,6 +13,10 @@ use crate::ease_out_quint;
 /// Semantic tokens for a soft-light glass surface.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlassTokens {
+    /// Primary text color used on translucent surfaces.
+    pub foreground: Hsla,
+    /// Secondary text color with readable contrast on glass.
+    pub foreground_muted: Hsla,
     /// Translucent surface fill. The alpha is intentionally below 1 to retain
     /// the depth of the content behind the panel.
     pub fill: Hsla,
@@ -101,6 +105,12 @@ impl GlassTokens {
             .blend(tint)
             .alpha(if theme.is_dark() { 0.76 } else { 0.82 });
         Self {
+            foreground: theme
+                .foreground
+                .alpha(if theme.is_dark() { 0.96 } else { 0.88 }),
+            foreground_muted: theme
+                .foreground
+                .alpha(if theme.is_dark() { 0.72 } else { 0.62 }),
             fill,
             fill_hover: theme
                 .background
@@ -362,7 +372,10 @@ pub fn glass_surface_with_backdrop(
                 .absolute()
                 .inset_0()
                 .rounded(tokens.radius)
-                .bg(tokens.fill.alpha(0.42)),
+                // Keep the tint light enough that the captured scene remains
+                // visible; the DirectX shader supplies the actual frosted
+                // transmission underneath this cross-backend fallback.
+                .bg(tokens.fill.alpha(0.18)),
         )
         // A low-alpha directional reflection gives every surface a gentle
         // Fresnel-like response while the native window backdrop supplies the

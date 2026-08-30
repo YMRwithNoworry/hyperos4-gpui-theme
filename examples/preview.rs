@@ -11,7 +11,8 @@ use gpui_component::{
     ActiveTheme, Root, Sizable, StyledExt,
 };
 use hyperos4_gpui_theme::{
-    glass_entrance, glass_interactive, glass_surface, GlassTokens, HyperOs4Theme,
+    glass_entrance, glass_interactive, glass_surface, glass_surface_with_backdrop, GlassBackdrop,
+    GlassTokens, HyperOs4Theme,
 };
 
 struct Preview;
@@ -115,7 +116,11 @@ fn nav_item(label: &'static str, active: bool, tokens: GlassTokens) -> impl Into
         } else {
             FontWeight::NORMAL
         })
-        .text_color(if active { tokens.border } else { tokens.shadow });
+        .text_color(if active {
+            tokens.foreground
+        } else {
+            tokens.foreground_muted
+        });
     if active {
         item = item
             .bg(tokens.fill_hover)
@@ -125,7 +130,7 @@ fn nav_item(label: &'static str, active: bool, tokens: GlassTokens) -> impl Into
     item.child(div().size(px(8.)).rounded_full().bg(if active {
         tokens.highlight
     } else {
-        tokens.shadow
+        tokens.foreground_muted
     }))
     .child(label)
 }
@@ -142,7 +147,12 @@ fn metric(
             .gap_2()
             .p_4()
             .flex_1()
-            .child(div().text_sm().text_color(tokens.shadow).child(label))
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(tokens.foreground_muted)
+                    .child(label),
+            )
             .child(
                 div()
                     .h_flex()
@@ -158,104 +168,74 @@ fn metric(
 /// A compact player tile used to make the material response visible in the
 /// preview. It stays in the same GPUI scene as the workspace, so cards above
 /// it can refract and blur these gradients through the DirectX backdrop pass.
-fn media_player() -> impl IntoElement {
-    let body = linear_gradient(
-        135.,
-        linear_color_stop(rgba(0x8faaca80), 0.),
-        linear_color_stop(rgba(0x162a46f2), 1.),
-    );
-    let reflection = linear_gradient(
-        155.,
-        linear_color_stop(rgba(0xe8f5ff52), 0.),
-        linear_color_stop(rgba(0xe8f5ff00), 0.5),
-    );
-    div()
-        .relative()
-        .overflow_hidden()
-        .w(px(148.))
-        .h(px(148.))
-        .rounded(px(24.))
-        .bg(body)
-        .border_1()
-        .border_color(rgba(0xd7efff78))
-        .shadow(vec![gpui::BoxShadow {
-            color: rgba(0x07132670).into(),
-            offset: point(px(0.), px(12.)),
-            blur_radius: px(24.),
-            spread_radius: px(0.),
-        }])
-        .child(div().absolute().inset_0().rounded(px(24.)).bg(reflection))
-        .child(
-            div()
-                .absolute()
-                .top(px(-28.))
-                .left(px(-30.))
-                .w(px(132.))
-                .h(px(76.))
-                .rounded_full()
-                .bg(rgba(0xd8f1ff30)),
-        )
-        .child(
-            div()
-                .absolute()
-                .right(px(-24.))
-                .bottom(px(-28.))
-                .size(px(92.))
-                .rounded_full()
-                .bg(rgba(0x7c98ff2e)),
-        )
-        .child(
-            div()
-                .absolute()
-                .top(px(14.))
-                .right(px(14.))
-                .text_lg()
-                .text_color(rgba(0xd8efffc2))
-                .child(")))"),
-        )
-        .child(
-            div()
-                .size_full()
-                .v_flex()
-                .items_center()
-                .justify_center()
-                .gap_2()
-                .text_color(rgba(0xeaf5ffcc))
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgba(0xd6ebff96))
-                        .child("NOW PLAYING"),
-                )
-                .child(
-                    div()
-                        .text_lg()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child("暂无播放"),
-                )
-                .child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_4()
-                        .text_sm()
-                        .text_color(rgba(0xd9edffb0))
-                        .child("◀")
-                        .child(
-                            div()
-                                .size(px(34.))
-                                .h_flex()
-                                .items_center()
-                                .justify_center()
-                                .rounded_full()
-                                .bg(rgba(0xf5fbffff))
-                                .text_color(rgba(0x1c314dff))
-                                .text_lg()
-                                .child("▶"),
-                        )
-                        .child("▶"),
-                ),
-        )
+fn media_player(tokens: GlassTokens) -> impl IntoElement {
+    // Keep this tile transparent: its backdrop is the content painted earlier
+    // in the same GPUI scene, rather than an opaque decorative texture.
+    let material = GlassBackdrop::from(tokens)
+        .with_chromatic_aberration(2.2)
+        .with_light_direction([-0.6, -0.75]);
+    glass_surface_with_backdrop(
+        div()
+            .relative()
+            .overflow_hidden()
+            .w(px(148.))
+            .h(px(148.))
+            .rounded(px(24.))
+            .child(
+                div()
+                    .absolute()
+                    .top(px(14.))
+                    .right(px(14.))
+                    .text_lg()
+                    .text_color(tokens.foreground)
+                    .child(">))"),
+            )
+            .child(
+                div()
+                    .size_full()
+                    .v_flex()
+                    .items_center()
+                    .justify_center()
+                    .gap_2()
+                    .text_color(tokens.foreground)
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(tokens.foreground_muted)
+                            .child("NOW PLAYING"),
+                    )
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child("暂无播放"),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap_4()
+                            .text_sm()
+                            .text_color(tokens.foreground_muted)
+                            .child("◀")
+                            .child(
+                                div()
+                                    .size(px(34.))
+                                    .h_flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_full()
+                                    .bg(tokens.foreground.opacity(0.86))
+                                    .text_color(tokens.fill)
+                                    .text_lg()
+                                    .child("▶"),
+                            )
+                            .child("▶"),
+                    ),
+            ),
+        tokens,
+        material,
+    )
 }
 
 fn note_row(
@@ -276,9 +256,19 @@ fn note_row(
                 .gap_1()
                 .flex_1()
                 .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(title))
-                .child(div().text_xs().text_color(tokens.shadow).child(time)),
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(tokens.foreground_muted)
+                        .child(time),
+                ),
         )
-        .child(div().text_sm().text_color(tokens.shadow).child("›"))
+        .child(
+            div()
+                .text_sm()
+                .text_color(tokens.foreground_muted)
+                .child("›"),
+        )
 }
 
 impl Render for Preview {
@@ -294,7 +284,7 @@ impl Render for Preview {
             .rounded(px(28.))
             // Keep the window surface translucent so the compositor can show
             // its blurred backdrop underneath the workspace shell.
-            .bg(theme.background.alpha(0.68))
+            .bg(theme.background.alpha(0.42))
             .border_1()
             .border_color(theme.border.alpha(0.72))
             .shadow(vec![gpui::BoxShadow {
@@ -342,7 +332,7 @@ impl Render for Preview {
                                     .child(
                                         div()
                                             .text_xs()
-                                            .text_color(tokens.shadow)
+                                            .text_color(tokens.foreground_muted)
                                             .child("soft glass workspace"),
                                     ),
                             ),
@@ -364,7 +354,7 @@ impl Render for Preview {
                                     .border_1()
                                     .border_color(tokens.border)
                                     .text_xs()
-                                    .text_color(tokens.shadow)
+                                    .text_color(tokens.foreground_muted)
                                     .child("⌘ K  Search"),
                             )
                             .child(
@@ -392,7 +382,7 @@ impl Render for Preview {
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(tokens.shadow)
+                                        .text_color(tokens.foreground_muted)
                                         .px_3()
                                         .child("WORKSPACE"),
                                 )
@@ -411,7 +401,7 @@ impl Render for Preview {
                                         .child(
                                             div()
                                                 .text_xs()
-                                                .text_color(tokens.shadow)
+                                                .text_color(tokens.foreground_muted)
                                                 .child("TODAY"),
                                         )
                                         .child(
@@ -423,7 +413,7 @@ impl Render for Preview {
                                         .child(
                                             div()
                                                 .text_xs()
-                                                .text_color(tokens.shadow)
+                                                .text_color(tokens.foreground_muted)
                                                 .child("Next up at 14:30"),
                                         ),
                                 ),
@@ -453,7 +443,7 @@ impl Render for Preview {
                                             .child(
                                                 div()
                                                     .text_sm()
-                                                    .text_color(tokens.shadow)
+                                                    .text_color(tokens.foreground_muted)
                                                     .child("Your calm space for the next small step."),
                                             ),
                                     )
@@ -475,9 +465,29 @@ impl Render for Preview {
                             .child(glass_entrance(
                                 "hero-card",
                                 div()
+                                    .relative()
                                     .v_flex()
                                     .gap_3()
                                     .p_5()
+                                    // This is ordinary UI content behind the
+                                    // player, intentionally painted before the
+                                    // transparent glass tile so refraction has
+                                    // something sharp to bend and blur.
+                                    .child(
+                                        div()
+                                            .absolute()
+                                            .top(px(4.))
+                                            .right(px(4.))
+                                            .w(px(190.))
+                                            .h(px(176.))
+                                            .rounded(px(34.))
+                                            .opacity(0.72)
+                                            .bg(linear_gradient(
+                                                132.,
+                                                linear_color_stop(theme.cyan.opacity(0.32), 0.),
+                                                linear_color_stop(theme.primary.opacity(0.34), 1.),
+                                            )),
+                                    )
                                     .child(
                                         div()
                                             .h_flex()
@@ -502,11 +512,11 @@ impl Render for Preview {
                                                     .child(
                                                         div()
                                                             .text_sm()
-                                                            .text_color(tokens.shadow)
+                                                            .text_color(tokens.foreground_muted)
                                                             .child("A softer interface helps the important thing stay in focus."),
                                                     ),
                                             )
-                                            .child(media_player()),
+                                            .child(media_player(tokens)),
                                     )
                                     .child(
                                         div()
@@ -517,7 +527,7 @@ impl Render for Preview {
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(tokens.shadow)
+                                                    .text_color(tokens.foreground_muted)
                                                     .child("Deep work · 48 min"),
                                             )
                                             .child(
