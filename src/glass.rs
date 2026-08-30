@@ -102,13 +102,12 @@ pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
 /// shadow. GPUI keeps the interaction state keyboard-safe and does not require
 /// hover to discover the panel's content.
 pub fn glass_interactive(child: impl IntoElement, tokens: GlassTokens) -> Div {
-    glass_surface(child, tokens)
-        .shadow(tokens.shadows(true))
-        .hover(move |mut style| {
-            style.background = Some(tokens.fill_hover.into());
-            style.border_color = Some(tokens.highlight);
-            style
-        })
+    glass_surface(child, tokens).hover(move |mut style| {
+        style.background = Some(tokens.fill_hover.into());
+        style.border_color = Some(tokens.highlight);
+        style.box_shadow = Some(tokens.shadows(true));
+        style
+    })
 }
 
 /// Fade a glass surface into the window using a short ease-out transition.
