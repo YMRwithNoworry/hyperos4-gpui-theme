@@ -45,6 +45,7 @@ impl HyperOs4Theme {
         // light and dark configurations side by side).
         theme.mode = mode;
         theme.apply_config(&config);
+        Theme::sync_scrollbar_appearance(cx);
     }
 
     /// The raw JSON source for consumers that want to register the theme in a
