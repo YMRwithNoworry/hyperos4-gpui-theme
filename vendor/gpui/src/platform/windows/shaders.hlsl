@@ -587,6 +587,13 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     float3 meniscus_normal = normalize(float3(-outward * men_circ * 0.95f, 0.26f + 0.74f * men_w));
     float men_blend = smoothstep(transition * 0.42f, 0.0f, edge_dist) * smoothstep(-4.0f, 0.0f, dist) * 0.82f;
     normal = normalize(lerp(normal, meniscus_normal, men_blend));
+    // Extend the spherical dome normal across the face, rather than limiting
+    // all curvature to the one-pixel SDF ramp. This is what gives a liquid
+    // lens its broad, readable refraction in the centre of a card.
+    float2 radial_slope = p / max(half_size, float2(1.0f, 1.0f));
+    float3 dome_normal = normalize(float3(-radial_slope * (0.34f + 0.18f * dome), 1.0f));
+    float dome_face_blend = saturate(dome * (0.28f + 0.52f * height));
+    normal = normalize(lerp(normal, dome_normal, dome_face_blend));
 
     // Two-interface Snell refraction through a finite-thickness slab.
     float3 view = float3(0.0f, 0.0f, 1.0f);
@@ -597,7 +604,11 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     float refr_strength = height * (0.5f + fresnel * 0.35f);
     float3 ref_in = refract(-view, normal, 1.0f / ior);
     float3 ref_out = dot(ref_in, ref_in) < 0.001f ? float3(0.0f, 0.0f, 0.0f) : refract(ref_in, -normal, ior);
-    float2 snell_offset = ref_out.xy * backdrop.thickness * refr_strength / global_viewport_size;
+    // A parallel glass slab exits with the original direction, but the ray
+    // has travelled sideways inside the medium. Use the internal Snell ray
+    // for that finite-thickness lateral displacement; using ref_out alone
+    // would cancel the two interfaces and produce almost no visible lensing.
+    float2 snell_offset = (ref_in.xy + ref_out.xy * 0.15f) * backdrop.thickness * refr_strength / global_viewport_size;
     snell_offset *= backdrop.displacement_scale;
     float2 lens_dir = g_rect + backdrop.lens_depth_effect * normalize(p + float2(0.0001f, 0.0001f));
     lens_dir = length(lens_dir) > 0.001f ? normalize(lens_dir) : float2(0.0f, 1.0f);

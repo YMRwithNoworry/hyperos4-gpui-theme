@@ -527,7 +527,40 @@ impl Render for Preview {
                                                 132.,
                                                 linear_color_stop(theme.cyan.opacity(0.32), 0.),
                                                 linear_color_stop(theme.primary.opacity(0.34), 1.),
-                                            )),
+                                            ))
+                                            // Crisp shapes are deliberately
+                                            // behind the player. Their edges
+                                            // are the easiest way to see the
+                                            // liquid lens bend the scene.
+                                            .child(
+                                                div()
+                                                    .absolute()
+                                                    .left(px(22.))
+                                                    .top(px(18.))
+                                                    .size(px(24.))
+                                                    .rounded_full()
+                                                    .bg(rgba(0xf43b4ee8)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .absolute()
+                                                    .right(px(14.))
+                                                    .top(px(58.))
+                                                    .w(px(112.))
+                                                    .h(px(24.))
+                                                    .rounded(px(12.))
+                                                    .bg(rgba(0xf7fbffff)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .absolute()
+                                                    .left(px(52.))
+                                                    .bottom(px(16.))
+                                                    .w(px(86.))
+                                                    .h(px(3.))
+                                                    .rounded_full()
+                                                    .bg(rgba(0x142f9ee8)),
+                                            ),
                                     )
                                     .child(
                                         div()
