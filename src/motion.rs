@@ -17,7 +17,10 @@ pub fn ease_out_back(t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0) - 1.0;
     let c1 = 1.70158;
     let c3 = c1 + 1.0;
-    1.0 + c3 * t * t * t + c1 * t * t
+    // GPUI validates easing output in the inclusive [0, 1] range. Clamping
+    // preserves the quick settle of a back curve without producing an invalid
+    // progress value for `Animation::with_easing`.
+    (1.0 + c3 * t * t * t + c1 * t * t).clamp(0.0, 1.0)
 }
 
 /// Quintic ease-out, matching GPUI's built-in easing style while being exposed
@@ -51,6 +54,10 @@ mod tests {
         }
         assert!((ease_out_back(0.0) - 0.0).abs() < f32::EPSILON);
         assert!((ease_out_back(1.0) - 1.0).abs() < f32::EPSILON);
+        for step in 0..=100 {
+            let progress = step as f32 / 100.0;
+            assert!((0.0..=1.0).contains(&ease_out_back(progress)));
+        }
     }
 
     #[test]
