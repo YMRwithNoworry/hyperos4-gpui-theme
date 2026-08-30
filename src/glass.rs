@@ -88,7 +88,6 @@ pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
 
     div()
         .relative()
-        .overflow_hidden()
         .rounded(tokens.radius)
         .bg(tokens.fill)
         .border_1()
