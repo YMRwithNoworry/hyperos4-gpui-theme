@@ -13,7 +13,7 @@
 - `ease_in_out_cubic`、`ease_out_back`、`ease_out_quint` 和 `interpolate_hsla` 可用于应用层状态动画
 - `examples/preview.rs` 提供可运行的主题预览
 
-GPUI 0.2.2 当前没有跨平台 backdrop blur 绘制 API，因此“柔光玻璃”使用半透明 tint + 高光 + 阴影来保留背景层次；未来接入渲染器模糊能力时，`GlassTokens` 可作为稳定的语义入口。
+GPUI 0.2.2 提供了 `WindowBackgroundAppearance::Blurred`，`soft_glass_window_background()` 已将它封装到主题 API 中：Windows 使用 Acrylic，macOS 使用 Visual Effect，支持的 Wayland 合成器使用原生 blur。GPUI 暂时没有逐组件的 backdrop blur 绘制 API，因此组件表面仍以半透明 tint + 高光 + 阴影作为跨平台 fallback。
 
 ## 使用
 
@@ -22,9 +22,11 @@ hyperos4-gpui-theme = { git = "https://github.com/YMRwithNoworry/hyperos4-gpui-t
 ```
 
 ```rust
-use gpui::{div, App, Window};
+use gpui::{div, App, Window, WindowOptions};
 use gpui_component::theme::ThemeMode;
-use hyperos4_gpui_theme::{glass_interactive, GlassTokens, HyperOs4Theme};
+use hyperos4_gpui_theme::{
+    glass_interactive, soft_glass_window_background, GlassTokens, HyperOs4Theme,
+};
 
 fn setup(cx: &mut App) {
     gpui_component::init(cx);
@@ -34,6 +36,13 @@ fn setup(cx: &mut App) {
 fn panel(window: &Window, cx: &App) -> impl gpui::IntoElement {
     let glass = GlassTokens::from_theme(cx.theme());
     glass_interactive(div().child("柔光玻璃"), glass)
+}
+
+fn window_options() -> WindowOptions {
+    WindowOptions {
+        window_background: soft_glass_window_background(),
+        ..Default::default()
+    }
 }
 ```
 

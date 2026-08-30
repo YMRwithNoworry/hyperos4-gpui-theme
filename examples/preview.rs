@@ -10,7 +10,8 @@ use gpui_component::{
     ActiveTheme, Root, Sizable, StyledExt,
 };
 use hyperos4_gpui_theme::{
-    glass_entrance, glass_interactive, glass_surface, GlassTokens, HyperOs4Theme,
+    glass_entrance, glass_interactive, glass_surface, soft_glass_window_background, GlassTokens,
+    HyperOs4Theme,
 };
 
 struct Preview;
@@ -114,7 +115,9 @@ impl Render for Preview {
             .w(px(1120.))
             .h(px(700.))
             .rounded(px(28.))
-            .bg(theme.background.alpha(0.74))
+            // Keep the window surface translucent so the compositor can show
+            // its blurred backdrop underneath the workspace shell.
+            .bg(theme.background.alpha(0.68))
             .border_1()
             .border_color(theme.border.alpha(0.72))
             .shadow(vec![gpui::BoxShadow {
@@ -422,7 +425,10 @@ impl Render for Preview {
             .h_flex()
             .items_center()
             .justify_center()
-            .bg(theme.background)
+            // This alpha is intentional: WindowBackgroundAppearance::Blurred
+            // supplies the native acrylic/visual-effect backdrop, while the
+            // soft color orbs remain visible through the shell and cards.
+            .bg(theme.background.alpha(0.22))
             .child(orb(theme.primary.opacity(0.13), 420., -120., -100.))
             .child(orb(theme.cyan.opacity(0.11), 360., 860., 430.))
             .child(orb(theme.magenta.opacity(0.09), 250., 760., -80.))
@@ -436,6 +442,7 @@ fn main() {
         HyperOs4Theme::install(cx, ThemeMode::Light);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(size(px(1120.), px(700.)), cx)),
+            window_background: soft_glass_window_background(),
             titlebar: Some(TitlebarOptions {
                 title: Some("HyperOS 4 · Soft Glass Preview".into()),
                 ..Default::default()

@@ -3,7 +3,7 @@ use std::time::Duration;
 use gpui::InteractiveElement;
 use gpui::{
     div, point, px, Animation, AnimationElement, AnimationExt, BoxShadow, Div, ElementId, Hsla,
-    IntoElement, ParentElement, Pixels, Styled,
+    IntoElement, ParentElement, Pixels, Styled, WindowBackgroundAppearance,
 };
 use gpui_component::theme::Theme;
 
@@ -76,6 +76,17 @@ impl GlassTokens {
     }
 }
 
+/// Select the native window backdrop used by HyperOS 4 glass previews.
+///
+/// GPUI maps [`WindowBackgroundAppearance::Blurred`] to the platform's
+/// compositor (acrylic on Windows, a visual-effect view on macOS, and the
+/// available Wayland blur protocol). Platforms that do not expose a backdrop
+/// blur keep the translucent tint and highlight treatment as a graceful
+/// fallback.
+pub const fn soft_glass_window_background() -> WindowBackgroundAppearance {
+    WindowBackgroundAppearance::Blurred
+}
+
 /// Build a soft-light glass surface around any GPUI element.
 pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
     let highlight = div()
@@ -138,5 +149,13 @@ mod tests {
         assert!(tokens.radius > px(0.));
         assert_eq!(tokens.shadows(false).len(), 1);
         assert_eq!(tokens.shadows(true).len(), 1);
+    }
+
+    #[test]
+    fn window_background_uses_native_blur() {
+        assert_eq!(
+            soft_glass_window_background(),
+            WindowBackgroundAppearance::Blurred
+        );
     }
 }
