@@ -98,6 +98,47 @@ fn ambient_pattern() -> impl IntoElement {
                 .bg(rgba(if i % 2 == 0 { 0xffffff2a } else { 0x244a9c24 })),
         );
     }
+    // Deliberately sharp backdrop objects. The glass panels above this layer
+    // should bend their edges and soften their silhouettes, just like the
+    // red/white forms visible through a liquid-glass card.
+    pattern = pattern
+        .child(
+            div()
+                .absolute()
+                .left(px(54.))
+                .top(px(142.))
+                .size(px(30.))
+                .rounded_full()
+                .bg(rgba(0xff3048e8)),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(30.))
+                .top(px(220.))
+                .w(px(126.))
+                .h(px(118.))
+                .rounded(px(26.))
+                .bg(rgba(0xf5fbff9a)),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(256.))
+                .top(px(88.))
+                .size(px(238.))
+                .rounded_full()
+                .bg(rgba(0x27d5c45c)),
+        )
+        .child(
+            div()
+                .absolute()
+                .right(px(72.))
+                .bottom(px(84.))
+                .size(px(190.))
+                .rounded_full()
+                .bg(rgba(0xa982ff55)),
+        );
     pattern
 }
 

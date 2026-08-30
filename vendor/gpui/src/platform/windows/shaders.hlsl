@@ -604,7 +604,13 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     float lens_ramp = circle_map_backdrop(1.0f - saturate(-dist / max(transition, 1.0f)));
     float2 lens_offset = lens_dir * (-backdrop.lens_refraction_px * lens_ramp) / global_viewport_size;
     float2 parallax = g_rect * height * (7.0f + 22.0f * fresnel) / global_viewport_size * (0.052f * backdrop.displacement_scale * backdrop.parallax_scale);
-    float2 base_offset = (snell_offset + lens_offset + parallax) * backdrop.distortion_strength;
+    // A shallow radial bulge gives the liquid dome a second, broad refraction
+    // lobe in addition to the thin silhouette lens ramp.
+    float2 radial_dir = length(p) > 0.001f ? normalize(-p) : float2(0.0f, 0.0f);
+    float bulge_band = smoothstep(0.04f, 0.34f, t_deep) * (1.0f - smoothstep(0.52f, 0.96f, t_deep));
+    float bulge = pow(max(bulge_band, 0.0f), 0.62f) * height * (0.028f + 0.018f * dome);
+    float2 bulge_offset = radial_dir * bulge * backdrop.bounds.size / global_viewport_size;
+    float2 base_offset = (snell_offset + lens_offset + parallax + bulge_offset) * backdrop.distortion_strength;
     float pinch_mix = 1.0f - smoothstep(0.0f, 0.72f, t_deep);
     float2 uv_center = backdrop_uv(uv, base_offset, pinch_mix, backdrop);
 
@@ -630,8 +636,9 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     float2 reflection_uv = saturate(uv_center + normalize(g_rect + float2(0.0001f, 0.0001f))
         * (4.0f + 38.0f * pow(1.0f - cos_view, 1.25f) + length(normal.xy) * 14.0f) / global_viewport_size);
     float3 reflected = sample_backdrop_blur(reflection_uv, texel, blur_radius * 0.55f).rgb;
-    color = lerp(color, reflected, saturate(edge_shell * fresnel_mix * (0.28f + 0.72f * height)));
-    color = lerp(color, float3(0.88f, 0.93f, 1.02f), saturate(edge_shell * fresnel_mix * 0.18f));
+    float surface_reflection = saturate(fresnel_mix * (0.18f + 0.82f * edge_shell) * (0.32f + 0.68f * height));
+    color = lerp(color, reflected, surface_reflection);
+    color = lerp(color, float3(0.88f, 0.93f, 1.02f), saturate(fresnel_mix * (0.08f + edge_shell * 0.24f)));
 
     float4 tint = hsla_to_rgba(backdrop.tint);
     color = lerp(color, tint.rgb, tint.a);
@@ -657,7 +664,9 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
     float shell_rim = smoothstep(rim_band, rim_band * 0.06f, edge_dist) * smoothstep(-2.2f, 0.0f, dist);
     float lit_rim = pow(max(edge_light, 0.0f), 3.6f) * shell_rim * backdrop.rim_strength;
     float opposite_rim = pow(max(-edge_light, 0.0f), 1.05f) * shell_rim * (0.28f + 0.72f * fresnel) * backdrop.rim_strength;
-    color += float3(0.98f, 0.992f, 1.008f) * (lit_rim * (0.58f + 0.42f * height) + opposite_rim * (0.4f + 0.6f * height));
+    float all_side_rim = pow(abs(edge_light), 0.72f) * shell_rim * backdrop.rim_strength *
+        (0.12f + 0.28f * fresnel);
+    color += float3(0.98f, 0.992f, 1.008f) * (lit_rim * (0.58f + 0.42f * height) + opposite_rim * (0.4f + 0.6f * height) + all_side_rim);
     float face_sheen = smoothstep(rim_band * 1.8f, rim_band * 0.08f, edge_dist) * smoothstep(-2.0f, 0.0f, dist)
         * smoothstep(0.08f, 0.82f, edge_light) * pow(1.0f - cos_view, 2.9f) * fresnel * backdrop.rim_strength * 0.022f;
     color += float3(0.98f, 0.992f, 1.008f) * face_sheen * (0.48f + 0.52f * height);
