@@ -11,8 +11,7 @@ use gpui_component::{
     ActiveTheme, Root, Sizable, StyledExt,
 };
 use hyperos4_gpui_theme::{
-    glass_entrance, glass_interactive, glass_surface, soft_glass_window_background, GlassTokens,
-    HyperOs4Theme,
+    glass_entrance, glass_interactive, glass_surface, GlassTokens, HyperOs4Theme,
 };
 
 struct Preview;
@@ -83,9 +82,9 @@ fn metric(
 }
 
 /// A compact player tile used to make the material response visible in the
-/// preview. The native window blur handles the backdrop; these layered
-/// gradients provide the soft reflection bands and edge refraction cues that
-/// remain available on every GPUI renderer.
+/// preview. It stays in the same GPUI scene as the workspace. GPUI 0.2.2 does
+/// not expose the scene texture to an element, so the portable material layer
+/// uses directional reflection bands and edge highlights as its fallback.
 fn media_player() -> impl IntoElement {
     let body = linear_gradient(
         135.,
@@ -131,6 +130,15 @@ fn media_player() -> impl IntoElement {
                 .size(px(92.))
                 .rounded_full()
                 .bg(rgba(0x7c98ff2e)),
+        )
+        .child(
+            div()
+                .absolute()
+                .top(px(14.))
+                .right(px(14.))
+                .text_lg()
+                .text_color(rgba(0xd8efffc2))
+                .child(")))"),
         )
         .child(
             div()
@@ -510,9 +518,8 @@ impl Render for Preview {
             .h_flex()
             .items_center()
             .justify_center()
-            // This alpha is intentional: WindowBackgroundAppearance::Blurred
-            // supplies the native acrylic/visual-effect backdrop, while the
-            // soft color orbs remain visible through the shell and cards.
+            // Keep the scene translucent so the soft color orbs remain visible
+            // through the shell and cards below their tint layers.
             .bg(theme.background.alpha(0.22))
             .child(orb(theme.primary.opacity(0.13), 420., -120., -100.))
             .child(orb(theme.cyan.opacity(0.11), 360., 860., 430.))
@@ -527,7 +534,6 @@ fn main() {
         HyperOs4Theme::install(cx, ThemeMode::Light);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(size(px(1120.), px(700.)), cx)),
-            window_background: soft_glass_window_background(),
             titlebar: Some(TitlebarOptions {
                 title: Some("HyperOS 4 · Soft Glass Preview".into()),
                 ..Default::default()

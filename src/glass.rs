@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use gpui::InteractiveElement;
 use gpui::{
-    div, point, px, Animation, AnimationElement, AnimationExt, BoxShadow, Div, ElementId, Hsla,
-    IntoElement, ParentElement, Pixels, Styled, WindowBackgroundAppearance,
+    div, linear_color_stop, linear_gradient, point, px, Animation, AnimationElement, AnimationExt,
+    BoxShadow, Div, ElementId, Hsla, IntoElement, ParentElement, Pixels, Styled,
+    WindowBackgroundAppearance,
 };
 use gpui_component::theme::Theme;
 
@@ -89,6 +90,11 @@ pub const fn soft_glass_window_background() -> WindowBackgroundAppearance {
 
 /// Build a soft-light glass surface around any GPUI element.
 pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
+    let reflection = linear_gradient(
+        145.,
+        linear_color_stop(tokens.highlight.opacity(0.46), 0.),
+        linear_color_stop(tokens.highlight.opacity(0.0), 0.42),
+    );
     let highlight = div()
         .absolute()
         .top_0()
@@ -99,11 +105,22 @@ pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
 
     div()
         .relative()
+        .overflow_hidden()
         .rounded(tokens.radius)
         .bg(tokens.fill)
         .border_1()
         .border_color(tokens.border)
         .shadow(tokens.shadows(false))
+        // A low-alpha directional reflection gives every surface a gentle
+        // Fresnel-like response while the native window backdrop supplies the
+        // actual blur behind transparent pixels.
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .rounded(tokens.radius)
+                .bg(reflection),
+        )
         .child(highlight)
         .child(child)
 }

@@ -4,16 +4,21 @@
 
 ![HyperOS 4 soft glass preview](assets/preview.png)
 
+播放器卡片与工作区处于同一个 GPUI 场景，透明度和反射层会直接透出其下方的光晕：
+
+![Floating media glass](assets/media-glass.png)
+
 ## 特性
 
 - 浅色和深色 `ThemeConfig`，可直接用于 `Theme::apply_config`
 - `GlassTokens::from_theme`：从当前语义主题派生玻璃表面颜色，避免在组件里散落色值
 - `glass_surface` / `glass_interactive`：半透明填充、hairline 边框、顶部 specular 高光和双层阴影
+- `soft_glass_window_background()`：为需要整窗系统 backdrop blur 的应用启用原生合成器支持
 - `glass_entrance`：360ms ease-out 入场动画，只在动画期间请求帧
 - `ease_in_out_cubic`、`ease_out_back`、`ease_out_quint` 和 `interpolate_hsla` 可用于应用层状态动画
 - `examples/preview.rs` 提供可运行的主题预览
 
-GPUI 0.2.2 提供了 `WindowBackgroundAppearance::Blurred`，`soft_glass_window_background()` 已将它封装到主题 API 中：Windows 使用 Acrylic，macOS 使用 Visual Effect，支持的 Wayland 合成器使用原生 blur。GPUI 暂时没有逐组件的 backdrop blur 绘制 API，因此组件表面仍以半透明 tint + 高光 + 阴影作为跨平台 fallback。
+GPUI 0.2.2 提供了 `WindowBackgroundAppearance::Blurred`，`soft_glass_window_background()` 已将它封装到主题 API 中：Windows 使用 Acrylic，macOS 使用 Visual Effect，支持的 Wayland 合成器使用原生 blur。注意它作用于整个原生窗口；GPUI 暂时没有逐组件的 backdrop blur 或场景纹理采样 API，因此同窗口组件使用半透明 tint、方向性反射和边缘高光作为可移植 fallback。要实现真正的逐像素折射，需要在 GPUI renderer 中增加 offscreen scene texture、blur pass、UV displacement 和 Fresnel shader。
 
 ## 使用
 
