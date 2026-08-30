@@ -16,7 +16,7 @@ GPUI 0.2.2 当前没有跨平台 backdrop blur 绘制 API，因此“柔光玻�
 ## 使用
 
 ```toml
-hyperos4-gpui-theme = { git = "https://github.com/your-name/hyperos4-gpui-theme" }
+hyperos4-gpui-theme = { git = "https://github.com/YMRwithNoworry/hyperos4-gpui-theme" }
 ```
 
 ```rust
@@ -44,4 +44,3 @@ cargo run --example preview
 ## 设计说明
 
 玻璃效果是组件级 opt-in，不会给所有控件默认添加动效。入场动画使用 ease-out quint，hover 仅改变表面 tint 和边缘，不依赖 hover 才能发现内容；这与 GPUI Component 的桌面交互和 reduced-motion 友好原则一致。
-
