@@ -39,7 +39,12 @@ impl HyperOs4Theme {
             gpui_component::init(cx);
         }
         let config = Rc::new(Self::config(mode));
-        Theme::global_mut(cx).apply_config(&config);
+        let theme = Theme::global_mut(cx);
+        // `Theme::apply_config` updates the palette snapshot but intentionally
+        // leaves the active mode to its caller (the registry uses this to keep
+        // light and dark configurations side by side).
+        theme.mode = mode;
+        theme.apply_config(&config);
     }
 
     /// The raw JSON source for consumers that want to register the theme in a
