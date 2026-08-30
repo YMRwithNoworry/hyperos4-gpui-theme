@@ -26,6 +26,53 @@ fn orb(color: Hsla, size: f32, x: f32, y: f32) -> impl IntoElement {
         .bg(color)
 }
 
+fn ambient_pattern() -> impl IntoElement {
+    let mut pattern = div().absolute().inset_0().opacity(0.82);
+    let colors = [rgba(0x5fd6ffb0), rgba(0xb58cff9c), rgba(0xff9acb98)];
+    for i in 0..18 {
+        let x = 32. + (i as f32 * 71.) % 1040.;
+        let y = 92. + ((i * 53) as f32 % 520.);
+        pattern = pattern.child(
+            div()
+                .absolute()
+                .left(px(x))
+                .top(px(y))
+                .size(px(if i % 3 == 0 { 18. } else { 9. }))
+                .rounded_full()
+                .bg(colors[i % colors.len()]),
+        );
+    }
+    for i in 0..9 {
+        pattern = pattern.child(
+            div()
+                .absolute()
+                .left(px(12. + i as f32 * 132.))
+                .top(px(168. + (i % 3) as f32 * 164.))
+                .w(px(112.))
+                .h(px(3.))
+                .rounded_full()
+                .bg(rgba(0xe6f5ff82)),
+        );
+    }
+    for i in 0..5 {
+        pattern = pattern.child(
+            div()
+                .absolute()
+                .left(px(180. + i as f32 * 190.))
+                .top(px(250. + (i % 2) as f32 * 86.))
+                .w(px(150.))
+                .h(px(22.))
+                .rounded(px(11.))
+                .bg(if i % 2 == 0 {
+                    rgba(0x67d9ff88)
+                } else {
+                    rgba(0xd69cff78)
+                }),
+        );
+    }
+    pattern
+}
+
 fn nav_item(label: &'static str, active: bool, tokens: GlassTokens) -> impl IntoElement {
     let mut item = div()
         .h(px(42.))
@@ -521,6 +568,7 @@ impl Render for Preview {
             // Keep the scene translucent so the soft color orbs remain visible
             // through the shell and cards below their tint layers.
             .bg(theme.background.alpha(0.22))
+            .child(ambient_pattern())
             .child(orb(theme.primary.opacity(0.13), 420., -120., -100.))
             .child(orb(theme.cyan.opacity(0.11), 360., 860., 430.))
             .child(orb(theme.magenta.opacity(0.09), 250., 760., -80.))

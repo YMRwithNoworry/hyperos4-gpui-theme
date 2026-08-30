@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use gpui::InteractiveElement;
 use gpui::{
-    div, linear_color_stop, linear_gradient, point, px, Animation, AnimationElement, AnimationExt,
-    BoxShadow, Div, ElementId, Hsla, IntoElement, ParentElement, Pixels, Styled,
-    WindowBackgroundAppearance,
+    canvas, div, linear_color_stop, linear_gradient, point, px, transparent_black, Animation,
+    AnimationElement, AnimationExt, BoxShadow, Corners, Div, ElementId, Hsla, IntoElement,
+    PaintBackdropBlur, ParentElement, Pixels, Styled, WindowBackgroundAppearance,
 };
 use gpui_component::theme::Theme;
 
@@ -28,6 +28,16 @@ pub struct GlassTokens {
     pub shadow_strong: Hsla,
     /// Corner radius in logical pixels.
     pub radius: Pixels,
+    /// Backdrop Gaussian blur radius in logical pixels.
+    pub blur_radius: Pixels,
+    /// Maximum refractive displacement in logical pixels.
+    pub distortion_strength: f32,
+    /// Fresnel reflection intensity.
+    pub reflection_strength: f32,
+    /// Index of refraction for the glass medium.
+    pub refraction_index: f32,
+    /// Micro-surface normal frequency in pixels.
+    pub noise_scale: f32,
 }
 
 impl GlassTokens {
@@ -59,6 +69,11 @@ impl GlassTokens {
                 .primary
                 .alpha(if theme.is_dark() { 0.34 } else { 0.2 }),
             radius: theme.radius_lg,
+            blur_radius: px(if theme.is_dark() { 22. } else { 18. }),
+            distortion_strength: if theme.is_dark() { 3.4 } else { 2.6 },
+            reflection_strength: if theme.is_dark() { 0.52 } else { 0.42 },
+            refraction_index: 1.46,
+            noise_scale: 0.018,
         }
     }
 
@@ -90,6 +105,40 @@ pub const fn soft_glass_window_background() -> WindowBackgroundAppearance {
 
 /// Build a soft-light glass surface around any GPUI element.
 pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
+    glass_surface_with_backdrop(child, tokens, GlassBackdrop::from(tokens))
+}
+
+/// Parameters for a refractive HyperOS 4 glass layer.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GlassBackdrop {
+    pub blur_radius: Pixels,
+    pub distortion_strength: f32,
+    pub reflection_strength: f32,
+    pub refraction_index: f32,
+    pub noise_scale: f32,
+}
+
+impl From<GlassTokens> for GlassBackdrop {
+    fn from(tokens: GlassTokens) -> Self {
+        Self {
+            blur_radius: tokens.blur_radius,
+            distortion_strength: tokens.distortion_strength,
+            reflection_strength: tokens.reflection_strength,
+            refraction_index: tokens.refraction_index,
+            noise_scale: tokens.noise_scale,
+        }
+    }
+}
+
+/// Build a glass surface with an in-scene backdrop sample and refractive
+/// compositing. The canvas is an absolute child, so its primitive is inserted
+/// exactly where the surface appears in the GPUI scene and samples only pixels
+/// painted below it in that same scene.
+pub fn glass_surface_with_backdrop(
+    child: impl IntoElement,
+    tokens: GlassTokens,
+    backdrop: GlassBackdrop,
+) -> Div {
     let reflection = linear_gradient(
         145.,
         linear_color_stop(tokens.highlight.opacity(0.46), 0.),
@@ -103,14 +152,43 @@ pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
         .h(px(1.))
         .bg(tokens.highlight);
 
+    let backdrop_layer = canvas(
+        |_, _, _| (),
+        move |bounds, _, window, _| {
+            window.paint_backdrop_blur(PaintBackdropBlur {
+                bounds,
+                corner_radii: Corners::all(tokens.radius),
+                blur_radius: backdrop.blur_radius,
+                distortion_strength: backdrop.distortion_strength,
+                reflection_strength: backdrop.reflection_strength,
+                refraction_index: backdrop.refraction_index,
+                noise_scale: backdrop.noise_scale,
+                tint: tokens.fill.alpha(0.28),
+            });
+        },
+    )
+    .absolute()
+    .inset_0();
+
     div()
         .relative()
         .overflow_hidden()
         .rounded(tokens.radius)
-        .bg(tokens.fill)
+        // The backdrop primitive is painted before this translucent fallback
+        // tint. On renderers without scene sampling the tint still preserves
+        // the soft glass appearance.
+        .bg(transparent_black())
         .border_1()
         .border_color(tokens.border)
         .shadow(tokens.shadows(false))
+        .child(backdrop_layer)
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .rounded(tokens.radius)
+                .bg(tokens.fill.alpha(0.42)),
+        )
         // A low-alpha directional reflection gives every surface a gentle
         // Fresnel-like response while the native window backdrop supplies the
         // actual blur behind transparent pixels.
@@ -130,7 +208,9 @@ pub fn glass_surface(child: impl IntoElement, tokens: GlassTokens) -> Div {
 /// hover to discover the panel's content.
 pub fn glass_interactive(child: impl IntoElement, tokens: GlassTokens) -> Div {
     glass_surface(child, tokens).hover(move |mut style| {
-        style.background = Some(tokens.fill_hover.into());
+        // Keep the parent quad transparent so the backdrop primitive still
+        // samples the content beneath the surface on hover.
+        style.background = Some(transparent_black().into());
         style.border_color = Some(tokens.highlight);
         style.box_shadow = Some(tokens.shadows(true));
         style

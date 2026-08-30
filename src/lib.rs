@@ -2,9 +2,10 @@
 //!
 //! The theme is intentionally built on top of GPUI Component's semantic theme
 //! tokens. Surfaces use translucent fills, a cool specular edge, restrained
-//! shadows, and the native blurred window backdrop where the platform supports
-//! it. Per-surface blur is not exposed by GPUI yet, so translucent tinting is
-//! retained as a portable fallback.
+//! shadows, and a renderer-level backdrop material. On Windows the vendored
+//! GPUI renderer snapshots the same-scene pixels below each surface, applies a
+//! Gaussian blur, Snell-law refraction and Fresnel reflection. Other renderers
+//! keep the primitive and use the translucent tint fallback.
 //!
 //! ```no_run
 //! use gpui::{App, Application, WindowBackgroundAppearance, WindowOptions};
@@ -27,7 +28,8 @@ mod motion;
 mod theme;
 
 pub use glass::{
-    glass_entrance, glass_interactive, glass_surface, soft_glass_window_background, GlassTokens,
+    glass_entrance, glass_interactive, glass_surface, glass_surface_with_backdrop,
+    soft_glass_window_background, GlassBackdrop, GlassTokens,
 };
 pub use motion::{ease_in_out_cubic, ease_out_back, ease_out_quint, interpolate_hsla};
 pub use theme::HyperOs4Theme;
