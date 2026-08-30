@@ -61,4 +61,3 @@ mod tests {
         assert_eq!(interpolate_hsla(from, to, 2.0), to);
     }
 }
-

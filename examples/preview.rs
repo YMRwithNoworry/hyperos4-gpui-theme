@@ -14,26 +14,22 @@ impl Render for Preview {
             .justify_center()
             .gap_4()
             .bg(cx.theme().background)
-            .child(
-                glass_entrance(
-                    "hyperos4-preview-card",
-                    div()
-                        .v_flex()
-                        .gap_2()
-                        .p_6()
-                        .child("HyperOS 4")
-                        .child("Soft light glass for GPUI"),
-                    tokens,
-                ),
-            )
-            .child(
-                glass_interactive(
-                    Button::new("toggle-theme")
-                        .label("Interactive glass")
-                        .on_click(|_, _, _| println!("glass action")),
-                    tokens,
-                ),
-            )
+            .child(glass_entrance(
+                "hyperos4-preview-card",
+                div()
+                    .v_flex()
+                    .gap_2()
+                    .p_6()
+                    .child("HyperOS 4")
+                    .child("Soft light glass for GPUI"),
+                tokens,
+            ))
+            .child(glass_interactive(
+                Button::new("toggle-theme")
+                    .label("Interactive glass")
+                    .on_click(|_, _, _| println!("glass action")),
+                tokens,
+            ))
     }
 }
 

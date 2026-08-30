@@ -23,4 +23,3 @@ mod theme;
 pub use glass::{glass_entrance, glass_interactive, glass_surface, GlassTokens};
 pub use motion::{ease_in_out_cubic, ease_out_back, ease_out_quint, interpolate_hsla};
 pub use theme::HyperOs4Theme;
-

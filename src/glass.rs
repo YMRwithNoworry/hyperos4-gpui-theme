@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use gpui::InteractiveElement;
 use gpui::{
-    div, px, point, Animation, AnimationElement, AnimationExt, BoxShadow, Div, ElementId, Hsla,
+    div, point, px, Animation, AnimationElement, AnimationExt, BoxShadow, Div, ElementId, Hsla,
     IntoElement, ParentElement, Pixels, Styled,
 };
-use gpui::InteractiveElement;
 use gpui_component::theme::Theme;
 
 use crate::ease_out_quint;
@@ -37,18 +37,26 @@ impl GlassTokens {
         } else {
             theme.primary.opacity(0.09)
         };
-        let fill = theme.background.blend(tint).alpha(if theme.is_dark() {
-            0.76
-        } else {
-            0.82
-        });
+        let fill = theme
+            .background
+            .blend(tint)
+            .alpha(if theme.is_dark() { 0.76 } else { 0.82 });
         Self {
             fill,
-            fill_hover: theme.background.blend(theme.primary.opacity(0.2)).alpha(0.9),
+            fill_hover: theme
+                .background
+                .blend(theme.primary.opacity(0.2))
+                .alpha(0.9),
             border: theme.border.blend(theme.primary.opacity(0.36)).alpha(0.72),
-            highlight: theme.primary_foreground.alpha(if theme.is_dark() { 0.22 } else { 0.62 }),
-            shadow: theme.foreground.alpha(if theme.is_dark() { 0.28 } else { 0.12 }),
-            shadow_strong: theme.primary.alpha(if theme.is_dark() { 0.34 } else { 0.2 }),
+            highlight: theme
+                .primary_foreground
+                .alpha(if theme.is_dark() { 0.22 } else { 0.62 }),
+            shadow: theme
+                .foreground
+                .alpha(if theme.is_dark() { 0.28 } else { 0.12 }),
+            shadow_strong: theme
+                .primary
+                .alpha(if theme.is_dark() { 0.34 } else { 0.2 }),
             radius: theme.radius_lg,
         }
     }
