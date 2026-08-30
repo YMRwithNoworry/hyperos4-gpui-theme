@@ -125,3 +125,19 @@ pub fn glass_entrance(
         |element, progress| element.opacity(0.78 + progress * 0.22),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derived_surface_keeps_translucency_and_contrast() {
+        let tokens = GlassTokens::from_theme(&Theme::default());
+        assert!(tokens.fill.a < 1.0);
+        assert!(tokens.fill_hover.a <= 1.0);
+        assert!(tokens.border.a > 0.0);
+        assert!(tokens.radius > px(0.));
+        assert_eq!(tokens.shadows(false).len(), 1);
+        assert_eq!(tokens.shadows(true).len(), 1);
+    }
+}
