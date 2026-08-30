@@ -1,8 +1,9 @@
 //! A content-rich showcase for the HyperOS 4 soft-light glass theme.
 
 use gpui::{
-    div, point, prelude::*, px, size, App, Application, Context, FontWeight, Hsla, ParentElement,
-    Styled, TitlebarOptions, Window, WindowBounds, WindowOptions,
+    div, linear_color_stop, linear_gradient, point, prelude::*, px, rgba, size, App, Application,
+    Context, FontWeight, Hsla, ParentElement, Styled, TitlebarOptions, Window, WindowBounds,
+    WindowOptions,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
@@ -79,6 +80,101 @@ fn metric(
             ),
         tokens,
     )
+}
+
+/// A compact player tile used to make the material response visible in the
+/// preview. The native window blur handles the backdrop; these layered
+/// gradients provide the soft reflection bands and edge refraction cues that
+/// remain available on every GPUI renderer.
+fn media_player() -> impl IntoElement {
+    let body = linear_gradient(
+        135.,
+        linear_color_stop(rgba(0x8faaca80), 0.),
+        linear_color_stop(rgba(0x162a46f2), 1.),
+    );
+    let reflection = linear_gradient(
+        155.,
+        linear_color_stop(rgba(0xe8f5ff52), 0.),
+        linear_color_stop(rgba(0xe8f5ff00), 0.5),
+    );
+    div()
+        .relative()
+        .overflow_hidden()
+        .w(px(148.))
+        .h(px(148.))
+        .rounded(px(24.))
+        .bg(body)
+        .border_1()
+        .border_color(rgba(0xd7efff78))
+        .shadow(vec![gpui::BoxShadow {
+            color: rgba(0x07132670).into(),
+            offset: point(px(0.), px(12.)),
+            blur_radius: px(24.),
+            spread_radius: px(0.),
+        }])
+        .child(div().absolute().inset_0().rounded(px(24.)).bg(reflection))
+        .child(
+            div()
+                .absolute()
+                .top(px(-28.))
+                .left(px(-30.))
+                .w(px(132.))
+                .h(px(76.))
+                .rounded_full()
+                .bg(rgba(0xd8f1ff30)),
+        )
+        .child(
+            div()
+                .absolute()
+                .right(px(-24.))
+                .bottom(px(-28.))
+                .size(px(92.))
+                .rounded_full()
+                .bg(rgba(0x7c98ff2e)),
+        )
+        .child(
+            div()
+                .size_full()
+                .v_flex()
+                .items_center()
+                .justify_center()
+                .gap_2()
+                .text_color(rgba(0xeaf5ffcc))
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgba(0xd6ebff96))
+                        .child("NOW PLAYING"),
+                )
+                .child(
+                    div()
+                        .text_lg()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child("暂无播放"),
+                )
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap_4()
+                        .text_sm()
+                        .text_color(rgba(0xd9edffb0))
+                        .child("◀")
+                        .child(
+                            div()
+                                .size(px(34.))
+                                .h_flex()
+                                .items_center()
+                                .justify_center()
+                                .rounded_full()
+                                .bg(rgba(0xf5fbffff))
+                                .text_color(rgba(0x1c314dff))
+                                .text_lg()
+                                .child("▶"),
+                        )
+                        .child("▶"),
+                ),
+        )
 }
 
 fn note_row(
@@ -329,18 +425,7 @@ impl Render for Preview {
                                                             .child("A softer interface helps the important thing stay in focus."),
                                                     ),
                                             )
-                                            .child(
-                                                div()
-                                                    .size(px(54.))
-                                                    .h_flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .rounded_full()
-                                                    .bg(theme.primary.opacity(0.2))
-                                                    .text_2xl()
-                                                    .text_color(theme.primary)
-                                                    .child("◌"),
-                                            ),
+                                            .child(media_player()),
                                     )
                                     .child(
                                         div()
