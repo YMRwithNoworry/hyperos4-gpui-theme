@@ -2,6 +2,8 @@
 
 一个面向 GPUI Component 的 HyperOS 4 柔光玻璃主题。它把柔和的冷色调、半透明表面、顶部高光和环境阴影封装成语义 token，并提供可选的短时缓动动画。
 
+![HyperOS 4 soft glass preview](assets/preview.png)
+
 ## 特性
 
 - 浅色和深色 `ThemeConfig`，可直接用于 `Theme::apply_config`
