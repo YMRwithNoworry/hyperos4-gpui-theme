@@ -1,0 +1,23 @@
+[package]
+name = "hyperos4-gpui-theme"
+version = "0.1.0"
+edition = "2021"
+description = "HyperOS 4 soft-light glass theme for GPUI Component"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-name/hyperos4-gpui-theme"
+readme = "README.md"
+keywords = ["gpui", "theme", "hyperos", "glassmorphism"]
+categories = ["gui"]
+
+[dependencies]
+gpui = "0.2.2"
+gpui-component = "0.5.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+
+[dev-dependencies]
+
+[[example]]
+name = "preview"
+path = "examples/preview.rs"
